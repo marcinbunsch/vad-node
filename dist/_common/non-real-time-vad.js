@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PlatformAgnosticNonRealTimeVAD = exports.defaultNonRealTimeVADOptions = void 0;
 const frame_processor_1 = require("./frame-processor");
+const frame_splitter_1 = require("./frame-splitter");
 const messages_1 = require("./messages");
 const models_1 = require("./models");
 const resampler_1 = require("./resampler");
@@ -66,6 +67,58 @@ class PlatformAgnosticNonRealTimeVAD {
                     start,
                     end: (frames.length * this.options.frameSamples) / 16,
                 };
+            }
+        };
+        // This is a version of run() which runs without generators
+        // it also speeds up the process by skipping resampling if the input is already at 16k
+        this.runWithCallback = async (inputAudio, sampleRate, callback) => {
+            if (!this.frameProcessor) {
+                throw new Error("VAD not initialized");
+            }
+            let frames = [];
+            // if we are already at 16k, skip resampling, go for fast frame splitting
+            if (sampleRate === 16000) {
+                const frameSplitter = new frame_splitter_1.FrameSplitter({
+                    targetFrameSize: this.options.frameSamples,
+                });
+                frames = frameSplitter.process(inputAudio);
+            }
+            else {
+                const resamplerOptions = {
+                    nativeSampleRate: sampleRate,
+                    targetSampleRate: 16000,
+                    targetFrameSize: this.options.frameSamples,
+                };
+                const resampler = new resampler_1.Resampler(resamplerOptions);
+                const resamplerFrames = resampler.process(inputAudio);
+                frames = resamplerFrames.map((f) => ({
+                    samples: f,
+                    isEmpty: !f.some((s) => s !== 0),
+                }));
+            }
+            let start = 0, i = 0, end;
+            for (const frame of frames) {
+                i++;
+                const { msg, audio } = await this.frameProcessor.process(frame);
+                switch (msg) {
+                    case messages_1.Message.SpeechStart:
+                        start = (i * this.options.frameSamples) / 16;
+                        break;
+                    case messages_1.Message.SpeechEnd:
+                        end = ((i + 1) * this.options.frameSamples) / 16;
+                        await callback({ audio, start, end });
+                        break;
+                    default:
+                        break;
+                }
+            }
+            const { msg, audio } = this.frameProcessor.endSegment();
+            if (msg == messages_1.Message.SpeechEnd) {
+                await callback({
+                    audio,
+                    start,
+                    end: (frames.length * this.options.frameSamples) / 16,
+                });
             }
         };
         (0, frame_processor_1.validateOptions)(options);

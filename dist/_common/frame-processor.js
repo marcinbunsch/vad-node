@@ -15,6 +15,7 @@ exports.defaultFrameProcessorOptions = {
     redemptionFrames: 8,
     frameSamples: 1536,
     minSpeechFrames: 3,
+    maxSpeechFrames: undefined,
 };
 function validateOptions(options) {
     if (!RECOMMENDED_FRAME_SAMPLES.includes(options.frameSamples)) {
@@ -94,7 +95,7 @@ class FrameProcessor {
             }
             const probs = await this.modelProcessFunc(frame);
             this.audioBuffer.push({
-                frame,
+                frame: frame.samples,
                 isSpeech: probs.isSpeech >= this.options.positiveSpeechThreshold,
             });
             if (probs.isSpeech >= this.options.positiveSpeechThreshold &&
@@ -105,6 +106,20 @@ class FrameProcessor {
                 !this.speaking) {
                 this.speaking = true;
                 return { probs, msg: messages_1.Message.SpeechStart };
+            }
+            if (probs.isSpeech >= this.options.positiveSpeechThreshold &&
+                this.speaking) {
+                const speechFrameCount = this.audioBuffer.reduce((acc, item) => {
+                    return acc + +item.isSpeech;
+                }, 0);
+                const maxSpeechFrames = this.options.maxSpeechFrames;
+                if (maxSpeechFrames && speechFrameCount >= maxSpeechFrames) {
+                    const audioBuffer = this.audioBuffer;
+                    // leave the preSpeechPadFrames at the beginning of the audioBuffer
+                    this.audioBuffer = audioBuffer.slice(audioBuffer.length - this.options.preSpeechPadFrames);
+                    const audio = concatArrays(audioBuffer.map((item) => item.frame));
+                    return { probs, msg: messages_1.Message.SpeechSegment, audio };
+                }
             }
             if (probs.isSpeech < this.options.negativeSpeechThreshold &&
                 this.speaking &&

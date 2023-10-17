@@ -2,31 +2,29 @@
 var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Silero = void 0;
-// @ts-ignore
-const logging_1 = require("./logging");
 class Silero {
     constructor(ort, modelFetcher) {
         this.ort = ort;
         this.modelFetcher = modelFetcher;
         this.init = async () => {
-            logging_1.log.debug("initializing vad");
             const modelArrayBuffer = await this.modelFetcher();
             this._session = await this.ort.InferenceSession.create(modelArrayBuffer);
+            // @ts-ignore
             this._sr = new this.ort.Tensor("int64", [16000n]);
             this.reset_state();
-            logging_1.log.debug("vad is initialized");
         };
         this.reset_state = () => {
             const zeroes = Array(2 * 64).fill(0);
             this._h = new this.ort.Tensor("float32", zeroes, [2, 1, 64]);
             this._c = new this.ort.Tensor("float32", zeroes, [2, 1, 64]);
         };
-        this.process = async (audioFrame) => {
-            // Silero has a bug where it infers silence as speech
-            // this is a workaround
-            const nonZero = audioFrame.filter((x) => x !== 0).length;
-            if (nonZero === 0)
+        this.process = async (audioFrameFull) => {
+            if (!this._session)
+                throw new Error("Silero model not initialized");
+            // Silero has a bug where it infers absolute silence as speech - this is a workaround
+            if (audioFrameFull.isEmpty)
                 return { notSpeech: 1, isSpeech: 0 };
+            const audioFrame = audioFrameFull.samples;
             const t = new this.ort.Tensor("float32", audioFrame, [1, audioFrame.length]);
             const inputs = {
                 input: t,

@@ -1,5 +1,6 @@
 import { SpeechProbabilities } from "./models";
 import { Message } from "./messages";
+import { Frame } from "./frame-splitter";
 export interface FrameProcessorOptions {
     /** Threshold over which values returned by the Silero VAD model will be considered as positively indicating speech.
      * The Silero VAD model is run on each frame. This number should be between 0 and 1.
@@ -28,12 +29,16 @@ export interface FrameProcessorOptions {
      * it will be discarded and `onVADMisfire` will be run instead of `onSpeechEnd`.
      */
     minSpeechFrames: number;
+    /**
+     * Maximum number of frames to process before stopping the VAD.
+     */
+    maxSpeechFrames?: number;
 }
 export declare const defaultFrameProcessorOptions: FrameProcessorOptions;
 export declare function validateOptions(options: FrameProcessorOptions): void;
 export interface FrameProcessorInterface {
     resume: () => void;
-    process: (arr: Float32Array) => Promise<{
+    process: (arr: Frame) => Promise<{
         probs?: SpeechProbabilities;
         msg?: Message;
         audio?: Float32Array;
@@ -44,7 +49,7 @@ export interface FrameProcessorInterface {
     };
 }
 export declare class FrameProcessor implements FrameProcessorInterface {
-    modelProcessFunc: (frame: Float32Array) => Promise<SpeechProbabilities>;
+    modelProcessFunc: (frame: Frame) => Promise<SpeechProbabilities>;
     modelResetFunc: () => any;
     options: FrameProcessorOptions;
     speaking: boolean;
@@ -54,7 +59,7 @@ export declare class FrameProcessor implements FrameProcessorInterface {
     }[];
     redemptionCounter: number;
     active: boolean;
-    constructor(modelProcessFunc: (frame: Float32Array) => Promise<SpeechProbabilities>, modelResetFunc: () => any, options: FrameProcessorOptions);
+    constructor(modelProcessFunc: (frame: Frame) => Promise<SpeechProbabilities>, modelResetFunc: () => any, options: FrameProcessorOptions);
     reset: () => void;
     pause: () => void;
     resume: () => void;
@@ -68,7 +73,7 @@ export declare class FrameProcessor implements FrameProcessorInterface {
         msg?: undefined;
         audio?: undefined;
     };
-    process: (frame: Float32Array) => Promise<{
+    process: (frame: Frame) => Promise<{
         probs?: undefined;
         msg?: undefined;
         audio?: undefined;

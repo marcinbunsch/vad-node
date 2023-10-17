@@ -1,3 +1,4 @@
+import { Frame } from "./frame-splitter";
 export type ONNXRuntimeAPI = any;
 export type ModelFetcher = () => Promise<ArrayBuffer>;
 export interface SpeechProbabilities {
@@ -11,7 +12,14 @@ export interface Model {
 export declare class Silero {
     private ort;
     private modelFetcher;
-    _session: any;
+    _session: {
+        run: (arg0: {
+            input: any;
+            h: any;
+            c: any;
+            sr: any;
+        }) => any;
+    } | undefined;
     _h: any;
     _c: any;
     _sr: any;
@@ -19,6 +27,6 @@ export declare class Silero {
     static new: (ort: ONNXRuntimeAPI, modelFetcher: ModelFetcher) => Promise<Silero>;
     init: () => Promise<void>;
     reset_state: () => void;
-    process: (audioFrame: Float32Array) => Promise<SpeechProbabilities>;
+    process: (audioFrameFull: Frame) => Promise<SpeechProbabilities>;
 }
 //# sourceMappingURL=models.d.ts.map

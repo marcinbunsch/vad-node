@@ -1,7 +1,7 @@
 import { FrameProcessorInterface, FrameProcessorOptions } from "./frame-processor";
 import { ModelFetcher, ONNXRuntimeAPI } from "./models";
 interface NonRealTimeVADSpeechData {
-    audio: Float32Array;
+    audio: Float32Array | undefined;
     start: number;
     end: number;
 }
@@ -17,6 +17,7 @@ export declare class PlatformAgnosticNonRealTimeVAD {
     constructor(modelFetcher: ModelFetcher, ort: ONNXRuntimeAPI, options: NonRealTimeVADOptions);
     init: () => Promise<void>;
     run: (inputAudio: Float32Array, sampleRate: number) => AsyncGenerator<NonRealTimeVADSpeechData>;
+    runWithCallback: (inputAudio: Float32Array, sampleRate: number, callback: (data: NonRealTimeVADSpeechData) => Promise<void>) => Promise<void>;
 }
 export {};
 //# sourceMappingURL=non-real-time-vad.d.ts.map

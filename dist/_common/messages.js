@@ -5,6 +5,7 @@ var Message;
 (function (Message) {
     Message["AudioFrame"] = "AUDIO_FRAME";
     Message["SpeechStart"] = "SPEECH_START";
+    Message["SpeechSegment"] = "SPEECH_SEGMENT";
     Message["VADMisfire"] = "VAD_MISFIRE";
     Message["SpeechEnd"] = "SPEECH_END";
 })(Message = exports.Message || (exports.Message = {}));
